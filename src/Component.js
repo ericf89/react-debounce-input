@@ -35,7 +35,8 @@ export const DebounceInput = React.createClass({
 
   getInitialState() {
     return {
-      value: this.props.value || ''
+      value: this.props.value || '',
+      debouncing: false
     };
   },
 
@@ -71,7 +72,8 @@ export const DebounceInput = React.createClass({
     } else if (debounceTimeout === 0) {
       this.notify = this.props.onChange;
     } else {
-      this.notify = debounce(this.props.onChange, debounceTimeout);
+      this.notify = debounce(event =>
+        this.setState({debouncing: false}, () => this.props.onChange(event)), debounceTimeout);
     }
   },
 
@@ -81,14 +83,20 @@ export const DebounceInput = React.createClass({
       this.notify.cancel();
     }
 
-    const {value} = this.state;
+    const {value, debouncing} = this.state;
     const {minLength, onChange} = this.props;
 
-    if (value.length >= minLength) {
-      onChange(event);
-    } else {
-      onChange({...event, target: {...event.target, value}});
+    if (!debouncing) {
+      return;
     }
+    event.persist();
+    this.setState({debouncing: false}, () => {
+      if (value.length >= minLength) {
+        onChange(event);
+      } else {
+        onChange({...event, target: {...event.target, value}});
+      }
+    });
   },
 
 
@@ -97,7 +105,7 @@ export const DebounceInput = React.createClass({
 
     const oldValue = this.state.value;
 
-    this.setState({value: event.target.value}, () => {
+    this.setState({value: event.target.value, debouncing: true}, () => {
       const {value} = this.state;
 
       if (value.length >= this.props.minLength) {
